@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="/manifest.json">
 <title>wemo</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -11,7 +12,8 @@
 body:not([data-mode="light"]){--back:var(--dark-sub);--front:var(--light-sub);}
 }
 html{height:100%;font-size:5vmin;}
-body{background:var(--back);color:var(--front);margin:0;height:100%;overflow:hidden;display:grid;grid-template-rows:1rem 1fr;gap:0.2rem;position:relative;}
+body{background:var(--back);color:var(--front);margin:0;height:100%;overflow:hidden;}
+body > div{display:grid;grid-template-rows:1rem 1fr;gap:0.2rem;position:relative;overflow:hidden;height:100%;}
 textarea{outline:none;box-sizing:border-box;border:none;font-size:1rem;resize:none;background:transparent;color:var(--front);}
 body.disablelinebreak textarea{white-space:pre;}
 dialog{border:none;padding:0 0 0.2rem;background:transparent;overflow:hidden;}
@@ -30,7 +32,7 @@ button.capsule{border:none;line-height:1rem;padding:0 0.5rem;color:var(--back);}
 #mode{width:8rem;grid-template-columns:1fr 1fr 1fr;}
 body[data-mode="light"] #mode button[data-mode="light"], body[data-mode="dark"] #mode button[data-mode="dark"], body[data-mode=""] #mode button[data-mode="default"]{background:var(--select);color:var(--back);}
 #menu{display:block;padding:0;position:absolute;bottom:-2.8rem;right:-2.8rem;line-height:4rem;width:4rem;height:4rem;transform:rotate(45deg);transition:bottom 0.5s,right 0.5s;border:none;background:var(--select);}
-#menu:hover{bottom:-2rem;right:-2rem;}
+#menu:hover,body.sp #menu{bottom:-2rem;right:-2rem;}
 #menu::before{content:'⚙';font-size:4rem;}
 #list{font-size:1rem;padding:0;}
 #list li{display:grid;grid-template-columns:1fr 1rem;}
@@ -569,10 +571,12 @@ customElements.whenDefined('item-select').then(() => {
 </script>
 <body>
 	<script>Config.init()</script>
-	<item-select id="name" placeholder="New note"></item-select>
-	<textarea id="memo" placeholder="Memo"></textarea>
-	<button id="menu"></button>
-	<div id="saved"><div>Saved.</div></div>
+	<div>
+		<item-select id="name" placeholder="New note"></item-select>
+		<textarea id="memo" placeholder="Memo"></textarea>
+		<button id="menu"></button>
+		<div id="saved"><div>Saved.</div></div>
+	</div>
 	<dialog id="config">
 		<div>
 			<div>
