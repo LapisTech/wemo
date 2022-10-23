@@ -26,20 +26,20 @@ h1{text-align:center;margin:0 0 0.5rem;font-size:1.5rem;background: no-repeat ce
 h1:hover{color:var(--front);opacity:0.7;}
 h2{font-size:1rem;margin:0.5rem 0;text-align:center;}
 .capsule{height:1rem;display:grid;margin:auto;border-radius:0.5rem;overflow:hidden;gap:0.1rem;}
-button.capsule{border:none;}
+button.capsule{border:none;line-height:1rem;padding:0 0.5rem;color:var(--back);}
 #mode{width:8rem;grid-template-columns:1fr 1fr 1fr;}
 body[data-mode="light"] #mode button[data-mode="light"], body[data-mode="dark"] #mode button[data-mode="dark"], body[data-mode=""] #mode button[data-mode="default"]{background:var(--select);color:var(--back);}
 #menu{display:block;padding:0;position:absolute;bottom:-2.8rem;right:-2.8rem;line-height:4rem;width:4rem;height:4rem;transform:rotate(45deg);transition:bottom 0.5s,right 0.5s;border:none;background:var(--select);}
 #menu:hover{bottom:-2rem;right:-2rem;}
 #menu::before{content:'⚙';font-size:4rem;}
-#linebreak{line-height:1rem;padding:0 0.5rem;color:var(--back);}
-#linebreak::before{content:'Enable';}
 #list{font-size:1rem;padding:0;}
 #list li{display:grid;grid-template-columns:1fr 1rem;}
 #list li button{cursor:pointer;background:transparent;}
 #list li button::before{content:'🗑️';}
-body.disablelinebreak #linebreak{background:var(--select);}
+#linebreak::before{content:'Enable';}
 body.disablelinebreak #linebreak::before{content:'Disable';}
+#sw::before{content:'Enable';}
+body.disablesw #sw::before{content:'Disable';}
 #saved{color:var(--select);background:rgba(0,0,0,0.7);opacity:0.5;display:block;position:absolute;margin:auto;top:0;bottom:0;width:100%;height:0.7rem;text-align:center;pointer-events:none;overflow:hidden;transition:height 0.5s;}
 #saved:not(.open){height:0;}
 #saved > div{border-top:1px solid var(--select);border-bottom:1px solid var(--select);line-height:0.5rem;font-size:0.5rem;position:absolute;margin:auto;top:50%;left:0;right:0;height:0.5rem;transform:translateY(-50%);}
@@ -409,7 +409,7 @@ class App {
 class Config {
 	storage;
 	list;
-	constructor(storage, menu, config, lineBreak, list) {
+	constructor(storage, menu, config, lineBreak, sw, list) {
 		this.storage = storage;
 		this.list = list;
 		Config.setLineBreak();
@@ -444,6 +444,16 @@ class Config {
 			}
 			Config.setLineBreak();
 		});
+		sw.addEventListener('click', () => {
+			if (document.body.classList.contains('disablesw')) {
+				ServiceWorkerManager.disable();
+				ServiceWorkerManager.unregister();
+			}
+			else {
+				ServiceWorkerManager.enable();
+			}
+			Config.setServiceWorker();
+		});
 	}
 	reset() {
 		this.list.innerHTML = '';
@@ -473,13 +483,92 @@ class Config {
 	static setLineBreak() {
 		document.body.classList[localStorage.getItem('-linebreak') ? 'add' : 'remove']('disablelinebreak');
 	}
+	static setServiceWorker() {
+		document.body.classList[!ServiceWorkerManager.isEnable() ? 'add' : 'remove']('disablesw');
+	}
+	static init() {
+		this.setMode();
+		this.setServiceWorker();
+	}
+}
+class ServiceWorkerManager {
+	static enable() {
+		localStorage.removeItem('-sw:disable');
+	}
+	static disable() {
+		localStorage.setItem('-sw:disable', 'true');
+	}
+	static toggle() {
+		if (this.disableUser()) {
+			this.enable();
+		}
+		else {
+			this.disable();
+		}
+		return !this.disableUser();
+	}
+	static isEnable() {
+		return location.protocol === 'https:' &&
+			this.disableUser() &&
+			'serviceWorker' in navigator;
+	}
+	static disableUser() {
+		return localStorage.getItem('-sw:disable') !== null;
+	}
+	static registered() {
+		if (!this.isEnable()) {
+			return Promise.reject(new Error('Cannot register ServiceWorker.'));
+		}
+		return navigator.serviceWorker.getRegistrations().then((registrations) => {
+			if (0 < registrations.length) {
+				return Promise.resolve();
+			}
+			return Promise.reject(new Error('Unregister ServiceWorker.'));
+		});
+	}
+	static register() {
+		if (this.isEnable()) {
+			return navigator.serviceWorker.register('/sw.js');
+		}
+		return Promise.reject(new Error('Cannot register ServiceWorker.'));
+	}
+	static async unregister() {
+		if (!this.isEnable()) {
+			return Promise.reject(new Error('Cannot register ServiceWorker.'));
+		}
+		await navigator.serviceWorker.getRegistrations().then((registrations) => {
+			let count = 0;
+			for (const registration of registrations) {
+				registration.unregister();
+				++count;
+			}
+			console.log(`Unregister ServiceWorker(${count})`);
+		});
+		await caches.keys().then(function (keys) {
+			return Promise.all(keys.map((cacheName) => {
+				if (cacheName) {
+					console.log(`Delete cache: ${cacheName}`);
+					return caches.delete(cacheName);
+				}
+				return Promise.resolve();
+			})).then(() => {
+				console.log('Delete caches complete!');
+			}).catch((error) => {
+				console.error(error);
+			});
+		});
+	}
 }
 customElements.whenDefined('item-select').then(() => {
 	const storage = new WemoStorage();
+	const sw = new ServiceWorkerManager();
 	const app = new App(storage, document.getElementById('name'), document.getElementById('memo'), document.getElementById('saved'));
-	const config = new Config(storage, document.getElementById('menu'), document.getElementById('config'), document.getElementById('linebreak'), document.getElementById('list'));
+	const config = new Config(storage, document.getElementById('menu'), document.getElementById('config'), document.getElementById('linebreak'), document.getElementById('sw'), document.getElementById('list'));
+	ServiceWorkerManager.register();
 });
 </script>
+<body>
+	<script>Config.init()</script>
 	<item-select id="name" placeholder="New note"></item-select>
 	<textarea id="memo" placeholder="Memo"></textarea>
 	<button id="menu"></button>
@@ -498,6 +587,10 @@ customElements.whenDefined('item-select').then(() => {
 				<div class="config">
 					<h4>Line break</h4>
 					<button id="linebreak" class="capsule"></button>
+				</div>
+				<div class="config">
+					<h4>ServiceWorker</h4>
+					<button id="sw" class="capsule"></button>
 				</div>
 				<h2>List</h2>
 				<ul id="list"></ul>

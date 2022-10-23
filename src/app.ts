@@ -449,6 +449,7 @@ class App {
 		this.textarea.value = this.storage.load(key);
 	}
 }
+
 class Config {
 	protected storage: WemoStorage;
 	protected list: HTMLElement;
@@ -458,6 +459,7 @@ class Config {
 		menu: HTMLButtonElement,
 		config: HTMLDialogElement,
 		lineBreak: HTMLButtonElement,
+		sw: HTMLButtonElement,
 		list: HTMLElement,
 	) {
 		this.storage = storage;
@@ -498,6 +500,16 @@ class Config {
 			}
 			Config.setLineBreak();
 		});
+
+		sw.addEventListener('click', () => {
+			if (document.body.classList.contains('disablesw')) {
+				ServiceWorkerManager.disable();
+				ServiceWorkerManager.unregister();
+			} else {
+				ServiceWorkerManager.enable();
+			}
+			Config.setServiceWorker();
+		});
 	}
 
 	protected reset() {
@@ -532,9 +544,100 @@ class Config {
 	static setLineBreak() {
 		document.body.classList[localStorage.getItem('-linebreak') ? 'add' : 'remove']('disablelinebreak');
 	}
+
+	static setServiceWorker() {
+		document.body.classList[!ServiceWorkerManager.isEnable() ? 'add' : 'remove']('disablesw');
+	}
+
+	static init() {
+		this.setMode();
+		this.setServiceWorker();
+	}
 }
+
+class ServiceWorkerManager {
+	static enable() {
+		localStorage.removeItem('-sw:disable');
+	}
+
+	static disable() {
+		localStorage.setItem('-sw:disable', 'true');
+	}
+
+	static toggle() {
+		if (this.disableUser()) {
+			// Disable -> Enable.
+			this.enable();
+		} else {
+			// Enable -> Disable.
+			this.disable();
+		}
+
+		return !this.disableUser();
+	}
+
+	static isEnable() {
+		return location.protocol === 'https:' &&
+			this.disableUser() &&
+			'serviceWorker' in navigator;
+	}
+
+	static disableUser() {
+		return localStorage.getItem('-sw:disable') !== null;
+	}
+
+	static registered() {
+		if (!this.isEnable()) {
+			return Promise.reject(new Error('Cannot register ServiceWorker.'));
+		}
+
+		return navigator.serviceWorker.getRegistrations().then((registrations) => {
+			if (0 < registrations.length) {
+				return Promise.resolve();
+			}
+			return Promise.reject(new Error('Unregister ServiceWorker.'));
+		});
+	}
+
+	static register() {
+		if (this.isEnable()) {
+			return navigator.serviceWorker.register('/sw.js');
+		}
+		return Promise.reject(new Error('Cannot register ServiceWorker.'));
+	}
+
+	static async unregister() {
+		if (!this.isEnable()) {
+			return Promise.reject(new Error('Cannot register ServiceWorker.'));
+		}
+
+		await navigator.serviceWorker.getRegistrations().then((registrations) => {
+			let count = 0;
+			for (const registration of registrations) {
+				registration.unregister();
+				++count;
+			}
+			console.log(`Unregister ServiceWorker(${count})`);
+		});
+		await caches.keys().then(function (keys) {
+			return Promise.all(keys.map((cacheName) => {
+				if (cacheName) {
+					console.log(`Delete cache: ${cacheName}`);
+					return caches.delete(cacheName);
+				}
+				return Promise.resolve();
+			})).then(() => {
+				console.log('Delete caches complete!');
+			}).catch((error) => {
+				console.error(error);
+			});
+		});
+	}
+}
+
 customElements.whenDefined('item-select').then(() => {
 	const storage = new WemoStorage();
+	const sw = new ServiceWorkerManager();
 	const app = new App(
 		storage,
 		<ItemSelectElement> document.getElementById('name'),
@@ -546,6 +649,8 @@ customElements.whenDefined('item-select').then(() => {
 		<HTMLButtonElement> document.getElementById('menu'),
 		<HTMLDialogElement> document.getElementById('config'),
 		<HTMLButtonElement> document.getElementById('linebreak'),
+		<HTMLButtonElement> document.getElementById('sw'),
 		<HTMLUListElement> document.getElementById('list'),
 	);
+	ServiceWorkerManager.register();
 });
