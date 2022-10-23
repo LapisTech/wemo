@@ -1,2 +1,1 @@
 # wemo
-Web memo.

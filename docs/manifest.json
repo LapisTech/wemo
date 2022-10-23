@@ -1,0 +1,8 @@
+{
+	"name": "Wemo",
+	"short_name": "Wemo",
+	"start_url": "/",
+	"icons": [{"src":"./favicon.svg","sizes":"any"}],
+	"display": "standalone",
+	"theme_color": "#4475bc"
+}

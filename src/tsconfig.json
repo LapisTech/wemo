@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"module": "amd",
+		"target": "ES2022",
+		"removeComments": true,
+		"strictNullChecks": true,
+		"noImplicitAny": true,
+		"sourceMap": false
+	},
+	"include": [
+		"./app.ts"
+	]
+}
