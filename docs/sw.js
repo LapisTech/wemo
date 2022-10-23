@@ -1,6 +1,5 @@
 const cacheName = 'wemo_pwa_v1.0.0';
-const appShellFiles = [
-	'/',
+const cacheFiles = [
 	'/favicon.svg',
 	'/index.html',
 ];
@@ -8,7 +7,7 @@ const appShellFiles = [
 self.addEventListener('install', (event) => {
 	event.waitUntil(
 		caches.open(cacheName).then((cache) => {
-			return cache.addAll(contentToCache);
+			return cache.addAll(cacheFiles);
 		})
 	);
 });
