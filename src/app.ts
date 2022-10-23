@@ -552,6 +552,9 @@ class Config {
 	static init() {
 		this.setMode();
 		this.setServiceWorker();
+		if ('orientation' in window) {
+			document.body.classList.add('sp');
+		}
 	}
 }
 
